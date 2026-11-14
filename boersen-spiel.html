@@ -286,6 +286,20 @@
       font-size: 1.1rem;
     }
 
+    .btn-pause-game {
+      background: #f59e0b;
+      color: #111827;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+    }
+
+    .btn-end-game {
+      background: var(--red);
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+    }
+
     .btn-speed-toggle {
       background: #334155;
       color: #fff;
@@ -335,49 +349,131 @@
       color: var(--text-muted);
     }
 
-    .host-table-card {
-      background: var(--card-bg);
-      border-radius: 16px;
-      border: 1px solid var(--border-color);
+    .host-stock-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 12px;
       flex: 1;
+      min-height: 0;
+    }
+
+    .host-stock-card {
+      min-width: 0;
+      min-height: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      justify-content: space-between;
+      gap: 8px;
     }
 
-    .host-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
+    .host-stock-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
     }
 
-    .host-table th {
-      background: #111827;
-      padding: 12px 18px;
+    .host-stock-name {
+      font-size: 1.05rem;
+      line-height: 1.2;
+      font-weight: 800;
+    }
+
+    .host-stock-sector {
       color: var(--text-muted);
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      border-bottom: 2px solid var(--border-color);
-    }
-
-    .host-table td {
-      padding: 12px 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      font-size: 1.15rem;
-      font-weight: 600;
-    }
-
-    .host-table tr:hover {
-      background: rgba(255,255,255,0.02);
-    }
-
-    .stock-badge-cat {
       font-size: 0.75rem;
-      font-weight: 400;
-      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .host-stock-price {
+      text-align: right;
+      white-space: nowrap;
+      font-size: 1.1rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .host-stock-change {
+      text-align: right;
+      font-size: 0.85rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stock-chart {
       display: block;
-      margin-top: 2px;
+      width: 100%;
+      height: 68px;
+      overflow: visible;
+    }
+
+    .stock-chart-line {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .stock-chart-dot {
+      fill: var(--accent);
+      stroke: var(--card-bg);
+      stroke-width: 1.5;
+    }
+
+    .host-stock-stats {
+      padding-top: 7px;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      font-weight: 650;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .exchange-logo {
+      width: 58px;
+      height: 48px;
+      flex: 0 0 auto;
+      color: var(--gold);
+      filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.35));
+    }
+
+    @media (max-width: 1200px) {
+      .host-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "room logo" "round round" "controls controls";
+        gap: 12px;
+      }
+
+      .room-badge { grid-area: room; }
+      .round-timer-box { grid-area: round; }
+      .host-controls { grid-area: controls; justify-content: flex-end; flex-wrap: wrap; }
+      .exchange-logo { grid-area: logo; justify-self: end; }
+
+      .host-stock-stats {
+        font-size: 0.65rem;
+        letter-spacing: -0.02em;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .host-stock-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(4, minmax(180px, 1fr));
+        overflow-y: auto;
+      }
+
+      #view-host {
+        height: auto;
+        min-height: 100vh;
+      }
     }
 
     /* ======================================================== */
@@ -731,7 +827,12 @@
       <div class="host-controls">
         <button class="btn-speed-toggle" id="btn-toggle-speed" onclick="toggleTestSpeed()">⚡ Modus: 5 Min</button>
         <button class="btn-start-game" id="btn-host-start" onclick="startHostGame()">Spiel starten</button>
+        <button class="btn-pause-game" id="btn-host-pause" onclick="toggleHostPause()" disabled>⏸ Anhalten</button>
+        <button class="btn-end-game" id="btn-host-end" onclick="endHostGame(true)" disabled>Spiel beenden</button>
       </div>
+      <svg class="exchange-logo" viewBox="0 0 100 72" role="img" aria-label="W-Börsenlogo">
+        <path d="M7 10 25 62 39 29 51 62 69 10 82 48 94 10" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
     </header>
 
     <div class="student-bar">
@@ -741,23 +842,7 @@
       </div>
     </div>
 
-    <div class="host-table-card">
-      <table class="host-table">
-        <thead>
-          <tr>
-            <th>Aktie & Sektor</th>
-            <th>Aktueller Kurs</th>
-            <th>Änderung</th>
-            <th>Käufe (Runde)</th>
-            <th>Verkäufe (Runde)</th>
-            <th>Gesamtbesitz (Klasse)</th>
-          </tr>
-        </thead>
-        <tbody id="host-stocks-tbody">
-          <!-- Dynamisch generiert -->
-        </tbody>
-      </table>
-    </div>
+    <main class="host-stock-grid" id="host-stock-grid"></main>
   </div>
 
   <!-- ======================================================== -->
@@ -767,7 +852,7 @@
     <header class="client-header">
       <div class="stat-box">
         <span class="stat-label">Bargeld</span>
-        <span class="stat-val" id="client-cash">10.000,00 €</span>
+        <span class="stat-val" id="client-cash">20.000,00 €</span>
       </div>
       <div class="stat-box">
         <span class="stat-label">Depotwert</span>
@@ -775,11 +860,11 @@
       </div>
       <div class="stat-box">
         <span class="stat-label">Gesamtvermögen</span>
-        <span class="stat-val val-wealth" id="client-wealth">10.000,00 €</span>
+        <span class="stat-val val-wealth" id="client-wealth">20.000,00 €</span>
       </div>
       <div class="stat-box">
         <span class="stat-label">Gewinn / Verlust</span>
-        <span class="stat-val" id="client-profit-pct">+0,00 %</span>
+        <span class="stat-val" id="client-profit-eur">+0,00 €</span>
       </div>
       <div class="client-round-box">
         <span class="stat-label" id="client-round-label">Runde -- / 24</span>
@@ -832,14 +917,14 @@
        DATENMODELL & KONFIGURATION DER 8 AKTIEN
     ========================================================== */
     const STOCKS_CONFIG = [
-      { id: 'solar',  name: 'SolarTech AG',        sector: 'Erneuerbare Energien',         baseVol: 0.08 },
-      { id: 'nord',   name: 'NordOel Group',        sector: 'Fossile Brennstoffe',          baseVol: 0.08 },
-      { id: 'qai',    name: 'QuantumAI Systems',    sector: 'Halbleiter & KI',              baseVol: 0.08 },
-      { id: 'cyber',  name: 'CyberShield Ltd',      sector: 'Cybersicherheit',              baseVol: 0.08 },
-      { id: 'bio',    name: 'BioPharma Glob',       sector: 'Gesundheit / Impfstoffe',      baseVol: 0.08 },
-      { id: 'aero',   name: 'AeroSpace Flight',     sector: 'Luftfahrt & Tourismus',        baseVol: 0.08 },
-      { id: 'bank',   name: 'SafeHaven Bank',       sector: 'Klassischer Bankensektor',     baseVol: 0.08 },
-      { id: 'crypto', name: 'CryptoWave Digital',   sector: 'Kryptowährungen / Spekulativ', baseVol: 0.25 }
+      { id: 'verteidigungsstahl', name: 'Verteidigungsstahl', sector: 'Stahlindustrie' },
+      { id: 'alt-entertainment', name: 'Alt-Entertaiment', sector: 'Unterhaltung' },
+      { id: 'volkswagen', name: 'Volkswagen Auto-Werke', sector: 'Automobilindustrie' },
+      { id: 'telekom', name: 'Telekom & Tech Süd', sector: 'Telekommunikation & Technologie' },
+      { id: 'cyber', name: 'Cyber Securit', sector: 'Cybersicherheit' },
+      { id: 'nordwind', name: 'Nordwind Energie', sector: 'Energie' },
+      { id: 'hochtief', name: 'Hochtief Bauwesen', sector: 'Bauwesen' },
+      { id: 'rhein-main-bank', name: 'Rhein-Main Bank AG', sector: 'Bankwesen' }
     ];
 
     let currentStocks = {};
@@ -848,22 +933,54 @@
         id: s.id,
         name: s.name,
         sector: s.sector,
-        price: 100.00,
-        prevPrice: 100.00,
-        changePct: 0.00
+        price: 5000,
+        prevPrice: 5000,
+        changeEuro: 0,
+        history: [5000],
+        secretActive: false
       };
     });
 
     const TOTAL_ROUNDS = 24;
+    const STARTING_CAPITAL = 20000;
+    const MINIMUM_STOCK_PRICE = 200;
     let roundDuration = 300; // Standard: 5 Min = 300 Sek
     let currentRound = 0;
     let secondsRemaining = 300;
     let roundTimerInterval = null;
     let isGameRunning = false;
+    let isGamePaused = false;
+    let isGameEnded = false;
 
     // Formatierer
     const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
     const numberFmt = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const wholeEuroFmt = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
+
+    function formatSignedCurrency(amount) {
+      const sign = amount >= 0 ? '+' : '-';
+      return `${sign}${wholeEuroFmt.format(Math.abs(amount))} €`;
+    }
+
+    function renderStockChart(stock) {
+      const history = stock.history;
+      const minPrice = Math.min(...history);
+      const maxPrice = Math.max(...history);
+      const range = maxPrice - minPrice || 1;
+      const points = history.map((price, index) => {
+        const x = history.length === 1 ? 4 : 4 + (index / (history.length - 1)) * 292;
+        const y = 70 - ((price - minPrice) / range) * 54;
+        return { x, y };
+      });
+      const pointList = points.map(point => `${point.x},${point.y}`).join(' ');
+      const dots = points.map(point =>
+        `<circle class="stock-chart-dot" cx="${point.x}" cy="${point.y}" r="3"></circle>`
+      ).join('');
+
+      return `<svg class="stock-chart" viewBox="0 0 300 80" preserveAspectRatio="none" role="img" aria-label="Kursverlauf ${stock.name}">
+        <polyline class="stock-chart-line" points="${pointList}"></polyline>${dots}
+      </svg>`;
+    }
 
     function switchView(viewId) {
       document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
@@ -878,11 +995,13 @@
     let hostConnections = {}; // id -> conn
     let connectedStudents = {}; // id -> name
     let hostStudentStats = {}; // stockId -> { boughtRound, soldRound, totalHeld }
+    let previousRoundHoldings = {};
     let clientFinalScores = []; // [{ studentName, totalWealth }]
 
     function initHostStats() {
       STOCKS_CONFIG.forEach(s => {
         hostStudentStats[s.id] = { boughtRound: 0, soldRound: 0, totalHeld: 0 };
+        previousRoundHoldings[s.id] = 0;
       });
     }
 
@@ -924,7 +1043,8 @@
           totalRounds: TOTAL_ROUNDS,
           prices: currentStocks,
           timeRemaining: secondsRemaining,
-          isRunning: isGameRunning
+          isRunning: isGameRunning,
+          isPaused: isGamePaused
         });
       });
 
@@ -983,8 +1103,16 @@
       startBtn.disabled = true;
       document.getElementById('btn-toggle-speed').disabled = true;
       isGameRunning = true;
+      isGamePaused = false;
+      isGameEnded = false;
       currentRound = 1;
+      document.getElementById('btn-host-pause').disabled = false;
+      document.getElementById('btn-host-end').disabled = false;
 
+      STOCKS_CONFIG.forEach(s => {
+        hostStudentStats[s.id].boughtRound = 0;
+        hostStudentStats[s.id].soldRound = 0;
+      });
       executePriceCalculation();
       secondsRemaining = roundDuration;
       broadcastRoundUpdate();
@@ -993,6 +1121,30 @@
 
       if (roundTimerInterval) clearInterval(roundTimerInterval);
       roundTimerInterval = setInterval(hostTick, 1000);
+    }
+
+    function toggleHostPause() {
+      if (!isGameRunning) return;
+      isGamePaused = !isGamePaused;
+
+      if (isGamePaused) {
+        clearInterval(roundTimerInterval);
+        roundTimerInterval = null;
+        document.getElementById('btn-host-pause').innerText = '▶ Fortsetzen';
+      } else {
+        roundTimerInterval = setInterval(hostTick, 1000);
+        document.getElementById('btn-host-pause').innerText = '⏸ Anhalten';
+      }
+
+      const message = {
+        type: 'GAME_PAUSE',
+        isPaused: isGamePaused,
+        timeRemaining: secondsRemaining,
+        round: currentRound
+      };
+      Object.values(hostConnections).forEach(conn => {
+        if (conn.open) conn.send(message);
+      });
     }
 
     function hostTick() {
@@ -1004,12 +1156,11 @@
         }
         currentRound++;
         secondsRemaining = roundDuration;
-        // Rundenkäufe / Verkäufe pro Runde resetten
+        executePriceCalculation();
         STOCKS_CONFIG.forEach(s => {
           hostStudentStats[s.id].boughtRound = 0;
           hostStudentStats[s.id].soldRound = 0;
         });
-        executePriceCalculation();
         broadcastRoundUpdate();
       }
 
@@ -1036,7 +1187,8 @@
         round: currentRound,
         totalRounds: TOTAL_ROUNDS,
         prices: currentStocks,
-        timeRemaining: secondsRemaining
+        timeRemaining: secondsRemaining,
+        isPaused: isGamePaused
       };
       Object.values(hostConnections).forEach(conn => {
         if (conn.open) conn.send(msg);
@@ -1044,48 +1196,52 @@
       renderHostTable();
     }
 
-    /* Kursberechnungs-Mathematik gemäß Vorgabe */
+    function adjustStockPrice(stockId, amount) {
+      const stock = currentStocks[stockId];
+      const previousPrice = stock.price;
+      stock.prevPrice = previousPrice;
+      stock.price = Math.max(MINIMUM_STOCK_PRICE, previousPrice + amount);
+      stock.changeEuro = stock.price - previousPrice;
+      return stock.changeEuro;
+    }
+
     function executePriceCalculation() {
-      // 1. Unkorrelierte Schocks ermitteln
-      const shocks = {};
       STOCKS_CONFIG.forEach(s => {
-        // Basis-Zufallswert (-vol bis +vol)
-        const shock = (Math.random() * 2 - 1) * s.baseVol;
-        shocks[s.id] = shock;
+        currentStocks[s.id].secretActive = false;
+      });
+      currentStocks.telekom.secretActive = Math.random() < 0.4;
+
+      const totalHoldings = {};
+      let totalBought = 0;
+      STOCKS_CONFIG.forEach(s => {
+        const stats = hostStudentStats[s.id];
+        totalHoldings[s.id] = stats.totalHeld;
+        totalBought += stats.boughtRound;
       });
 
-      // 2. Korrelationen anwenden
-      const finalPctChanges = {};
+      const changeInDefenseHoldings = totalHoldings.verteidigungsstahl -
+        (previousRoundHoldings.verteidigungsstahl || 0);
+      adjustStockPrice('verteidigungsstahl', changeInDefenseHoldings < 0
+        ? Math.abs(changeInDefenseHoldings) * 200
+        : changeInDefenseHoldings * -200);
+      previousRoundHoldings = { ...totalHoldings };
 
-      // Unabhängige / Treiber
-      finalPctChanges['solar'] = shocks['solar'];
-      finalPctChanges['qai']   = shocks['qai'];
-      finalPctChanges['bio']   = shocks['bio'];
-      finalPctChanges['bank']  = shocks['bank'];
+      adjustStockPrice('alt-entertainment', currentRound % 2 === 1 ? 700 : -500);
+      adjustStockPrice('volkswagen',
+        hostStudentStats.volkswagen.boughtRound > hostStudentStats.telekom.boughtRound ? 1200 : -600);
+      const telekomHoldings = totalHoldings.telekom;
+      adjustStockPrice('telekom', telekomHoldings >= 10 && telekomHoldings <= 30 ? 1300 : -800);
+      adjustStockPrice('cyber', currentStocks.telekom.secretActive ? 900 : -700);
+      adjustStockPrice('nordwind', totalBought > 15 ? 700 : -400);
+      adjustStockPrice('hochtief', currentStocks.verteidigungsstahl.changeEuro > 0 ? 600 : -600);
 
-      // NordOel: negativ korreliert zu SolarTech (-0.7)
-      finalPctChanges['nord']   = (shocks['nord'] * 0.5) + (shocks['solar'] * -0.7);
+      const otherChanges = STOCKS_CONFIG.slice(0, 7).map(s => currentStocks[s.id].changeEuro);
+      const risingStocks = otherChanges.filter(change => change > 0).length;
+      const fallingStocks = otherChanges.filter(change => change < 0).length;
+      adjustStockPrice('rhein-main-bank', risingStocks >= 4 ? 800 : fallingStocks >= 4 ? -500 : 0);
 
-      // CyberShield: positiv korreliert zu QuantumAI (+0.6)
-      finalPctChanges['cyber']  = (shocks['cyber'] * 0.5) + (shocks['qai'] * 0.6);
-
-      // AeroSpace: negativ korreliert zu BioPharma (-0.5)
-      finalPctChanges['aero']   = (shocks['aero'] * 0.5) + (shocks['bio'] * -0.5);
-
-      // CryptoWave: extrem volatil, negativ korreliert zu SafeHaven Bank (-0.6)
-      finalPctChanges['crypto'] = shocks['crypto'] + (shocks['bank'] * -0.6);
-
-      // 3. Neue Kurse berechnen, Schranke 2.00 € anwenden und runden
       STOCKS_CONFIG.forEach(s => {
-        const stock = currentStocks[s.id];
-        stock.prevPrice = stock.price;
-
-        let newPrice = stock.price * (1 + finalPctChanges[s.id]);
-        if (newPrice < 2.00) newPrice = 2.00;
-        newPrice = Math.round(newPrice * 100) / 100;
-
-        stock.price = newPrice;
-        stock.changePct = ((stock.price - stock.prevPrice) / stock.prevPrice) * 100;
+        currentStocks[s.id].history.push(currentStocks[s.id].price);
       });
     }
 
@@ -1103,32 +1259,43 @@
     }
 
     function renderHostTable() {
-      const tbody = document.getElementById('host-stocks-tbody');
-      tbody.innerHTML = STOCKS_CONFIG.map(s => {
+      const grid = document.getElementById('host-stock-grid');
+      grid.innerHTML = STOCKS_CONFIG.map(s => {
         const item = currentStocks[s.id];
         const stat = hostStudentStats[s.id] || { boughtRound: 0, soldRound: 0, totalHeld: 0 };
-        const changeClass = item.changePct >= 0 ? 'pill-green' : 'pill-red';
-        const sign = item.changePct >= 0 ? '+' : '';
+        const changeClass = item.changeEuro >= 0 ? 'color-green' : 'color-red';
+        const secretIcon = item.secretActive ? '<span aria-label="Geheimnis aktiv"> 🔒</span>' : '';
 
         return `
-          <tr>
-            <td>
-              <strong>${item.name}</strong>
-              <span class="stock-badge-cat">${item.sector}</span>
-            </td>
-            <td>${currencyFmt.format(item.price)}</td>
-            <td><span class="pill ${changeClass}">${sign}${item.changePct.toFixed(2)} %</span></td>
-            <td style="color: var(--green); font-weight: 700;">+${stat.boughtRound}</td>
-            <td style="color: var(--red); font-weight: 700;">-${stat.soldRound}</td>
-            <td style="color: var(--accent); font-weight: 800;">${stat.totalHeld} Stk.</td>
-          </tr>
+          <article class="host-stock-card">
+            <div class="host-stock-top">
+              <div>
+                <div class="host-stock-name">${item.name}${secretIcon}</div>
+                <div class="host-stock-sector">${item.sector}</div>
+              </div>
+              <div>
+                <div class="host-stock-price">${currencyFmt.format(item.price)}</div>
+                <div class="host-stock-change ${changeClass}">${formatSignedCurrency(item.changeEuro)}</div>
+              </div>
+            </div>
+            ${renderStockChart(item)}
+            <div class="host-stock-stats">Gekauft: ${stat.boughtRound} | Verkauft: ${stat.soldRound} | Gesamtbesitz: ${stat.totalHeld}</div>
+          </article>
         `;
       }).join('');
     }
 
-    function endHostGame() {
+    function endHostGame(confirmEarlyEnd) {
+      if (!isGameRunning || isGameEnded) return;
+      if (confirmEarlyEnd && !confirm('Möchtest du das Spiel wirklich vorzeitig beenden?')) return;
+
       clearInterval(roundTimerInterval);
+      roundTimerInterval = null;
       isGameRunning = false;
+      isGamePaused = false;
+      isGameEnded = true;
+      document.getElementById('btn-host-pause').disabled = true;
+      document.getElementById('btn-host-end').disabled = true;
 
       // Broadcast GAME_OVER
       const msg = { type: 'GAME_OVER', prices: currentStocks };
@@ -1148,7 +1315,7 @@
         wealth: data.totalWealth || 0
       });
       // Aktualisiere das Leaderboard live, falls bereits aufgerufen
-      if (!isGameRunning && currentRound >= TOTAL_ROUNDS) {
+      if (isGameEnded) {
         renderLeaderboardView();
       }
     }
@@ -1194,9 +1361,11 @@
     let clientPeer = null;
     let clientConn = null;
     let studentName = '';
-    let cash = 10000.00;
+    let cash = STARTING_CAPITAL;
     let portfolio = {}; // stockId -> count
     let isClientLocked = false;
+    let isClientPaused = false;
+    let clientRound = 0;
 
     STOCKS_CONFIG.forEach(s => {
       portfolio[s.id] = 0;
@@ -1260,14 +1429,27 @@
 
       if (data.type === 'SYNC' || data.type === 'ROUND_UPDATE') {
         currentStocks = data.prices;
+        isClientPaused = Boolean(data.isPaused);
+        clientRound = data.round;
         updateClientRoundHeader(data.round, data.totalRounds);
         updateTimerDisplay('client-timer-display', data.timeRemaining);
         renderClientCards();
         updateClientDepotOverview();
       } else if (data.type === 'TIMER_SYNC') {
         updateTimerDisplay('client-timer-display', data.timeRemaining);
+      } else if (data.type === 'GAME_PAUSE') {
+        isClientPaused = data.isPaused;
+        clientRound = data.round;
+        updateTimerDisplay('client-timer-display', data.timeRemaining);
+        if (isClientPaused) {
+          document.getElementById('client-round-label').innerText = `Pausiert · Runde ${clientRound} / ${TOTAL_ROUNDS}`;
+        } else {
+          updateClientRoundHeader(clientRound, TOTAL_ROUNDS);
+        }
+        renderClientCards();
       } else if (data.type === 'GAME_OVER') {
         isClientLocked = true;
+        isClientPaused = false;
         if (data.prices) currentStocks = data.prices;
         renderClientCards();
         updateClientDepotOverview();
@@ -1285,6 +1467,7 @@
     }
 
     function updateClientRoundHeader(round, total) {
+      clientRound = round;
       const lbl = document.getElementById('client-round-label');
       if (round === 0) {
         lbl.innerText = 'Warte auf Start...';
@@ -1308,16 +1491,15 @@
     function updateClientDepotOverview() {
       const depotVal = calculateDepotValue();
       const wealth = cash + depotVal;
-      const profitPct = ((wealth - 10000.00) / 10000.00) * 100;
+      const profit = wealth - STARTING_CAPITAL;
 
       document.getElementById('client-cash').innerText = currencyFmt.format(cash);
       document.getElementById('client-stocks-val').innerText = currencyFmt.format(depotVal);
       document.getElementById('client-wealth').innerText = currencyFmt.format(wealth);
 
-      const profitEl = document.getElementById('client-profit-pct');
-      const sign = profitPct >= 0 ? '+' : '';
-      profitEl.innerText = `${sign}${profitPct.toFixed(2)} %`;
-      profitEl.className = 'stat-val ' + (profitPct >= 0 ? 'color-green' : 'color-red');
+      const profitEl = document.getElementById('client-profit-eur');
+      profitEl.innerText = formatSignedCurrency(profit);
+      profitEl.className = 'stat-val ' + (profit >= 0 ? 'color-green' : 'color-red');
     }
 
     function renderClientCards() {
@@ -1326,8 +1508,8 @@
         const item = currentStocks[s.id];
         const owned = portfolio[s.id] || 0;
         const price = item.price;
-        const changeClass = item.changePct >= 0 ? 'color-green' : 'color-red';
-        const sign = item.changePct >= 0 ? '+' : '';
+        const changeClass = item.changeEuro >= 0 ? 'color-green' : 'color-red';
+        const tradingDisabled = isClientLocked || isClientPaused;
 
         // Maximale Kaufkraft berechnen
         const maxAffordable = Math.floor(cash / price);
@@ -1341,7 +1523,7 @@
               </div>
               <div class="stock-price-box">
                 <div class="stock-price">${currencyFmt.format(price)}</div>
-                <div class="stock-change ${changeClass}">${sign}${item.changePct.toFixed(2)}%</div>
+                <div class="stock-change ${changeClass}">${formatSignedCurrency(item.changeEuro)}</div>
               </div>
             </div>
 
@@ -1353,15 +1535,15 @@
             <div class="stock-actions">
               <!-- KAUFEN -->
               <div class="btn-row">
-                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 1)" ${cash < price || isClientLocked ? 'disabled' : ''}>+1</button>
-                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 5)" ${cash < (price * 5) || isClientLocked ? 'disabled' : ''}>+5</button>
-                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', ${maxAffordable})" ${maxAffordable < 1 || isClientLocked ? 'disabled' : ''}>Max (${maxAffordable})</button>
+                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 1)" ${cash < price || tradingDisabled ? 'disabled' : ''}>+1</button>
+                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 5)" ${cash < (price * 5) || tradingDisabled ? 'disabled' : ''}>+5</button>
+                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', ${maxAffordable})" ${maxAffordable < 1 || tradingDisabled ? 'disabled' : ''}>Max (${maxAffordable})</button>
               </div>
               <!-- VERKAUFEN -->
               <div class="btn-row">
-                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -1)" ${owned < 1 || isClientLocked ? 'disabled' : ''}>-1</button>
-                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -5)" ${owned < 5 || isClientLocked ? 'disabled' : ''}>-5</button>
-                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -${owned})" ${owned < 1 || isClientLocked ? 'disabled' : ''}>Alle (${owned})</button>
+                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -1)" ${owned < 1 || tradingDisabled ? 'disabled' : ''}>-1</button>
+                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -5)" ${owned < 5 || tradingDisabled ? 'disabled' : ''}>-5</button>
+                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -${owned})" ${owned < 1 || tradingDisabled ? 'disabled' : ''}>Alle (${owned})</button>
               </div>
             </div>
           </div>
@@ -1370,7 +1552,7 @@
     }
 
     function tradeStock(stockId, amount) {
-      if (isClientLocked || amount === 0) return;
+      if (isClientLocked || isClientPaused || amount === 0) return;
       const stock = currentStocks[stockId];
       const cost = stock.price * Math.abs(amount);
 
