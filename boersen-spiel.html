@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Börsenspiel P2P – WebRTC Schul-Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-inner: #0f172a;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --green: #22c55e;
+      --green-dark: #16a34a;
+      --red: #ef4444;
+      --red-dark: #dc2626;
+      --gold: #fbbf24;
+      --silver: #cbd5e1;
+      --bronze: #d97706;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    button, input, select {
+      font-family: inherit;
+    }
+
+    button {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      transition: all 0.15s ease-in-out;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .view-container {
+      display: none;
+      flex: 1;
+      width: 100%;
+      height: 100vh;
+      padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 20px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 20px);
+    }
+
+    .view-container.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ======================================================== */
+    /* 1. ROLLENAUSWAHL                                         */
+    /* ======================================================== */
+    #view-role {
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    }
+
+    .role-modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      text-align: center;
+      max-width: 540px;
+      width: 90%;
+    }
+
+    .role-modal h1 {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+
+    .role-modal p {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 1.1rem;
+    }
+
+    .role-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .btn-role {
+      padding: 18px 24px;
+      font-size: 1.2rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .btn-host {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+    }
+
+    .btn-client {
+      background: linear-gradient(135deg, #059669, #10b981);
+    }
+
+    /* ======================================================== */
+    /* MODAL: CLIENT JOIN FORM                                  */
+    /* ======================================================== */
+    #join-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .join-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+    }
+
+    .join-box h2 {
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+      text-align: center;
+      color: var(--accent);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 18px;
+    }
+
+    .input-group label {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .input-group input {
+      background: var(--card-inner);
+      border: 2px solid var(--border-color);
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus {
+      border-color: var(--accent);
+    }
+
+    .join-btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .btn-secondary {
+      background: #475569;
+      color: #fff;
+      padding: 14px;
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0f172a;
+      padding: 14px;
+      flex: 2;
+    }
+
+    /* ======================================================== */
+    /* 2. HOST-ANSICHT (LEHRER / BEAMER)                        */
+    /* ======================================================== */
+    #view-host {
+      gap: 14px;
+    }
+
+    .host-header {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .room-badge {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .room-badge span:first-child {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .room-code-display {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--accent);
+      background: #0f172a;
+      padding: 4px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+    }
+
+    .round-timer-box {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .round-indicator {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .timer-display {
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: #f59e0b;
+      min-width: 110px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .host-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-start-game {
+      background: var(--green);
+      color: #0f172a;
+      padding: 12px 22px;
+      font-size: 1.1rem;
+    }
+
+    .btn-speed-toggle {
+      background: #334155;
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+    }
+
+    .btn-speed-toggle.active-fast {
+      background: #f59e0b;
+      color: #000;
+    }
+
+    .student-bar {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border-color);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .student-count-badge {
+      background: var(--accent);
+      color: #0f172a;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .student-list-tags {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+
+    .student-tag {
+      background: var(--card-inner);
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .host-table-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .host-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .host-table th {
+      background: #111827;
+      padding: 12px 18px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .host-table td {
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .host-table tr:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .stock-badge-cat {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* ======================================================== */
+    /* 3. CLIENT-ANSICHT (SCHÜLER)                             */
+    /* ======================================================== */
+    #view-client {
+      gap: 12px;
+    }
+
+    .client-header {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 12px 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .val-wealth {
+      color: var(--accent);
+    }
+
+    .client-round-box {
+      text-align: right;
+    }
+
+    .client-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 1024px) {
+      .client-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stock-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .stock-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .stock-name-box {
+      max-width: 65%;
+    }
+
+    .stock-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stock-sector {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stock-price-box {
+      text-align: right;
+    }
+
+    .stock-price {
+      font-size: 1.25rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stock-change {
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .stock-owned-row {
+      background: var(--card-inner);
+      padding: 6px 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stock-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-trade {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 0.95rem;
+    }
+
+    .btn-buy {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+      border: 1px solid var(--green);
+    }
+
+    .btn-buy:active:not(:disabled) {
+      background: var(--green);
+      color: #000;
+    }
+
+    .btn-sell {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid var(--red);
+    }
+
+    .btn-sell:active:not(:disabled) {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* ======================================================== */
+    /* 4. SIEGEREHRUNG (PODIUM & LEADERBOARD)                   */
+    /* ======================================================== */
+    #view-gameover {
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .gameover-container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .podium-section {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      height: 270px;
+      margin-top: 10px;
+    }
+
+    .podium-step {
+      flex: 1;
+      max-width: 220px;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 16px;
+      text-align: center;
+      border: 2px solid transparent;
+      box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.4);
+    }
+
+    .step-1 {
+      height: 100%;
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.25) 0%, rgba(30, 41, 59, 0.9) 100%);
+      border-color: var(--gold);
+      order: 2;
+    }
+
+    .step-2 {
+      height: 80%;
+      background: linear-gradient(180deg, rgba(203, 213, 225, 0.2) 0%, rgba(30, 41, 59, 0.9) 100%);
+      border-color: var(--silver);
+      order: 1;
+    }
+
+    .step-3 {
+      height: 65%;
+      background: linear-gradient(180deg, rgba(217, 119, 6, 0.2) 0%, rgba(30, 41, 59, 0.9) 100%);
+      border-color: var(--bronze);
+      order: 3;
+    }
+
+    .trophy-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #000;
+      margin-bottom: 8px;
+    }
+
+    .trophy-1 { background: var(--gold); }
+    .trophy-2 { background: var(--silver); }
+    .trophy-3 { background: var(--bronze); }
+
+    .podium-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    .podium-wealth {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    .leaderboard-list {
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .leaderboard-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 1.05rem;
+    }
+
+    .leaderboard-row:last-child {
+      border-bottom: none;
+    }
+
+    /* Allg. Hilfsklassen */
+    .color-green { color: var(--green) !important; }
+    .color-red { color: var(--red) !important; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .pill-green { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .pill-red { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+  </style>
+</head>
+<body>
+
+  <!-- ======================================================== -->
+  <!-- 1. ROLLENAUSWAHL                                         -->
+  <!-- ======================================================== -->
+  <div id="view-role" class="view-container active">
+    <div class="role-modal">
+      <h1>Börsen-Arena</h1>
+      <p>Interaktive P2P-Wirtschaftssimulation im Klassenraum</p>
+      <div class="role-btn-group">
+        <button class="btn-role btn-host" onclick="initHost()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v13H3z"></path><path d="M8 21h8"></path><path d="M12 16v5"></path></svg>
+          Spiel hosten (Tafel-Ansicht)
+        </button>
+        <button class="btn-role btn-client" onclick="showClientModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><circle cx="12" cy="18" r="1"></circle></svg>
+          Spiel beitreten (Schüler-iPad)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ZUM BEITRETEN -->
+  <div id="join-modal-overlay">
+    <div class="join-box">
+      <h2>Depot eröffnen</h2>
+      <div class="input-group">
+        <label for="input-room-code">Raum-Code (4 Ziffern oder BORS-XXXX):</label>
+        <input type="text" id="input-room-code" placeholder="z.B. 4819" autocomplete="off" autocorrect="off" autocapitalize="characters">
+      </div>
+      <div class="input-group">
+        <label for="input-student-name">Dein Name / Teamname:</label>
+        <input type="text" id="input-student-name" placeholder="z.B. Anna & Tom" maxlength="20" autocomplete="off">
+      </div>
+      <div class="join-btn-row">
+        <button class="btn-secondary" onclick="hideClientModal()">Abbrechen</button>
+        <button class="btn-primary" onclick="initClientFromModal()">Verbinden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 2. HOST-ANSICHT                                          -->
+  <!-- ======================================================== -->
+  <div id="view-host" class="view-container">
+    <header class="host-header">
+      <div class="room-badge">
+        <span>RAUM-CODE:</span>
+        <span class="room-code-display" id="host-room-id">VERBINDE...</span>
+      </div>
+      <div class="round-timer-box">
+        <div class="round-indicator" id="host-round-indicator">Runde 0 / 24</div>
+        <div class="timer-display" id="host-timer-display">--:--</div>
+      </div>
+      <div class="host-controls">
+        <button class="btn-speed-toggle" id="btn-toggle-speed" onclick="toggleTestSpeed()">⚡ Modus: 5 Min</button>
+        <button class="btn-start-game" id="btn-host-start" onclick="startHostGame()">Spiel starten</button>
+      </div>
+    </header>
+
+    <div class="student-bar">
+      <div class="student-count-badge" id="host-client-count">0 Schüler verbunden</div>
+      <div class="student-list-tags" id="host-client-list">
+        <span style="color: var(--text-muted); font-size: 0.85rem;">Warte auf Schüler...</span>
+      </div>
+    </div>
+
+    <div class="host-table-card">
+      <table class="host-table">
+        <thead>
+          <tr>
+            <th>Aktie & Sektor</th>
+            <th>Aktueller Kurs</th>
+            <th>Änderung</th>
+            <th>Käufe (Runde)</th>
+            <th>Verkäufe (Runde)</th>
+            <th>Gesamtbesitz (Klasse)</th>
+          </tr>
+        </thead>
+        <tbody id="host-stocks-tbody">
+          <!-- Dynamisch generiert -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 3. CLIENT-ANSICHT                                        -->
+  <!-- ======================================================== -->
+  <div id="view-client" class="view-container">
+    <header class="client-header">
+      <div class="stat-box">
+        <span class="stat-label">Bargeld</span>
+        <span class="stat-val" id="client-cash">10.000,00 €</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Depotwert</span>
+        <span class="stat-val" id="client-stocks-val">0,00 €</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Gesamtvermögen</span>
+        <span class="stat-val val-wealth" id="client-wealth">10.000,00 €</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Gewinn / Verlust</span>
+        <span class="stat-val" id="client-profit-pct">+0,00 %</span>
+      </div>
+      <div class="client-round-box">
+        <span class="stat-label" id="client-round-label">Runde -- / 24</span>
+        <div class="timer-display" id="client-timer-display" style="font-size: 1.5rem; text-align: right;">--:--</div>
+      </div>
+    </header>
+
+    <main class="client-grid" id="client-grid-stocks">
+      <!-- 8 Dynamische Aktien-Karten -->
+    </main>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 4. SIEGEREHRUNG / GAMEOVER                               -->
+  <!-- ======================================================== -->
+  <div id="view-gameover" class="view-container">
+    <div class="gameover-container">
+      <h1 style="font-size: 2.4rem; color: var(--gold);">Handelsschluss & Siegerehrung</h1>
+      <p style="color: var(--text-muted); margin-top: -12px;">Ergebnisse der finalen Portfolioprüfung</p>
+
+      <div class="podium-section">
+        <div class="podium-step step-2" id="podium-rank-2">
+          <div class="trophy-badge trophy-2">2</div>
+          <div class="podium-name" id="podium-name-2">-</div>
+          <div class="podium-wealth" id="podium-wealth-2">0,00 €</div>
+        </div>
+        <div class="podium-step step-1" id="podium-rank-1">
+          <div class="trophy-badge trophy-1">1</div>
+          <div class="podium-name" id="podium-name-1">-</div>
+          <div class="podium-wealth" id="podium-wealth-1">0,00 €</div>
+        </div>
+        <div class="podium-step step-3" id="podium-rank-3">
+          <div class="trophy-badge trophy-3">3</div>
+          <div class="podium-name" id="podium-name-3">-</div>
+          <div class="podium-wealth" id="podium-wealth-3">0,00 €</div>
+        </div>
+      </div>
+
+      <div class="leaderboard-list" id="gameover-remaining-list">
+        <!-- Rang 4+ -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- JAVASCRIPT-LOGIK                                         -->
+  <!-- ======================================================== -->
+  <script>
+    /* ==========================================================
+       DATENMODELL & KONFIGURATION DER 8 AKTIEN
+    ========================================================== */
+    const STOCKS_CONFIG = [
+      { id: 'solar',  name: 'SolarTech AG',        sector: 'Erneuerbare Energien',         baseVol: 0.08 },
+      { id: 'nord',   name: 'NordOel Group',        sector: 'Fossile Brennstoffe',          baseVol: 0.08 },
+      { id: 'qai',    name: 'QuantumAI Systems',    sector: 'Halbleiter & KI',              baseVol: 0.08 },
+      { id: 'cyber',  name: 'CyberShield Ltd',      sector: 'Cybersicherheit',              baseVol: 0.08 },
+      { id: 'bio',    name: 'BioPharma Glob',       sector: 'Gesundheit / Impfstoffe',      baseVol: 0.08 },
+      { id: 'aero',   name: 'AeroSpace Flight',     sector: 'Luftfahrt & Tourismus',        baseVol: 0.08 },
+      { id: 'bank',   name: 'SafeHaven Bank',       sector: 'Klassischer Bankensektor',     baseVol: 0.08 },
+      { id: 'crypto', name: 'CryptoWave Digital',   sector: 'Kryptowährungen / Spekulativ', baseVol: 0.25 }
+    ];
+
+    let currentStocks = {};
+    STOCKS_CONFIG.forEach(s => {
+      currentStocks[s.id] = {
+        id: s.id,
+        name: s.name,
+        sector: s.sector,
+        price: 100.00,
+        prevPrice: 100.00,
+        changePct: 0.00
+      };
+    });
+
+    const TOTAL_ROUNDS = 24;
+    let roundDuration = 300; // Standard: 5 Min = 300 Sek
+    let currentRound = 0;
+    let secondsRemaining = 300;
+    let roundTimerInterval = null;
+    let isGameRunning = false;
+
+    // Formatierer
+    const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+    const numberFmt = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    function switchView(viewId) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(viewId);
+      if (activeEl) activeEl.classList.add('active');
+    }
+
+    /* ==========================================================
+       HOST-LOGIK (LEHRER)
+    ========================================================== */
+    let hostPeer = null;
+    let hostConnections = {}; // id -> conn
+    let connectedStudents = {}; // id -> name
+    let hostStudentStats = {}; // stockId -> { boughtRound, soldRound, totalHeld }
+    let clientFinalScores = []; // [{ studentName, totalWealth }]
+
+    function initHostStats() {
+      STOCKS_CONFIG.forEach(s => {
+        hostStudentStats[s.id] = { boughtRound: 0, soldRound: 0, totalHeld: 0 };
+      });
+    }
+
+    function initHost() {
+      switchView('view-host');
+      initHostStats();
+      renderHostTable();
+
+      const randomDigits = Math.floor(1000 + Math.random() * 9000);
+      const roomId = 'BORS-' + randomDigits;
+
+      hostPeer = new Peer(roomId);
+
+      hostPeer.on('open', (id) => {
+        document.getElementById('host-room-id').innerText = id;
+      });
+
+      hostPeer.on('connection', (conn) => {
+        setupHostConnection(conn);
+      });
+
+      hostPeer.on('error', (err) => {
+        console.error('Peer-Fehler:', err);
+        if (err.type === 'unavailable-id') {
+          // Falls ID besetzt ist, erneut versuchen
+          setTimeout(initHost, 500);
+        }
+      });
+    }
+
+    function setupHostConnection(conn) {
+      conn.on('open', () => {
+        hostConnections[conn.peer] = conn;
+
+        // Sofortigen Sync-Status an den neuen Client senden
+        conn.send({
+          type: 'SYNC',
+          round: currentRound,
+          totalRounds: TOTAL_ROUNDS,
+          prices: currentStocks,
+          timeRemaining: secondsRemaining,
+          isRunning: isGameRunning
+        });
+      });
+
+      conn.on('data', (data) => {
+        if (!data || !data.type) return;
+
+        if (data.type === 'JOIN') {
+          connectedStudents[conn.peer] = data.studentName;
+          updateHostStudentUI();
+        } else if (data.type === 'TRADE') {
+          handleIncomingTrade(data);
+        } else if (data.type === 'FINAL_SCORE') {
+          handleIncomingFinalScore(data);
+        }
+      });
+
+      conn.on('close', () => {
+        delete hostConnections[conn.peer];
+        delete connectedStudents[conn.peer];
+        updateHostStudentUI();
+      });
+    }
+
+    function updateHostStudentUI() {
+      const studentNames = Object.values(connectedStudents);
+      const countEl = document.getElementById('host-client-count');
+      const listEl = document.getElementById('host-client-list');
+
+      countEl.innerText = `${studentNames.length} Schüler verbunden`;
+      if (studentNames.length === 0) {
+        listEl.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem;">Warte auf Schüler...</span>';
+      } else {
+        listEl.innerHTML = studentNames.map(name => `<span class="student-tag">${escapeHtml(name)}</span>`).join('');
+      }
+    }
+
+    function toggleTestSpeed() {
+      if (isGameRunning && currentRound > 0) return; // Nicht während des Laufs umschalten
+      const btn = document.getElementById('btn-toggle-speed');
+      if (roundDuration === 300) {
+        roundDuration = 10;
+        secondsRemaining = 10;
+        btn.classList.add('active-fast');
+        btn.innerText = '⚡ Modus: 10 Sek';
+      } else {
+        roundDuration = 300;
+        secondsRemaining = 300;
+        btn.classList.remove('active-fast');
+        btn.innerText = '⚡ Modus: 5 Min';
+      }
+      updateTimerDisplay('host-timer-display', secondsRemaining);
+    }
+
+    function startHostGame() {
+      const startBtn = document.getElementById('btn-host-start');
+      startBtn.disabled = true;
+      document.getElementById('btn-toggle-speed').disabled = true;
+      isGameRunning = true;
+      currentRound = 1;
+
+      executePriceCalculation();
+      secondsRemaining = roundDuration;
+      broadcastRoundUpdate();
+      renderHostTable();
+      updateHostHeaderUI();
+
+      if (roundTimerInterval) clearInterval(roundTimerInterval);
+      roundTimerInterval = setInterval(hostTick, 1000);
+    }
+
+    function hostTick() {
+      secondsRemaining--;
+      if (secondsRemaining <= 0) {
+        if (currentRound >= TOTAL_ROUNDS) {
+          endHostGame();
+          return;
+        }
+        currentRound++;
+        secondsRemaining = roundDuration;
+        // Rundenkäufe / Verkäufe pro Runde resetten
+        STOCKS_CONFIG.forEach(s => {
+          hostStudentStats[s.id].boughtRound = 0;
+          hostStudentStats[s.id].soldRound = 0;
+        });
+        executePriceCalculation();
+        broadcastRoundUpdate();
+      }
+
+      updateHostHeaderUI();
+      broadcastTimerSync();
+    }
+
+    function updateHostHeaderUI() {
+      document.getElementById('host-round-indicator').innerText = `Runde ${currentRound} / ${TOTAL_ROUNDS}`;
+      updateTimerDisplay('host-timer-display', secondsRemaining);
+    }
+
+    function broadcastTimerSync() {
+      // Leichtgewichtiges Timer-Signal an Clients
+      const msg = { type: 'TIMER_SYNC', timeRemaining: secondsRemaining };
+      Object.values(hostConnections).forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+    }
+
+    function broadcastRoundUpdate() {
+      const msg = {
+        type: 'ROUND_UPDATE',
+        round: currentRound,
+        totalRounds: TOTAL_ROUNDS,
+        prices: currentStocks,
+        timeRemaining: secondsRemaining
+      };
+      Object.values(hostConnections).forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+      renderHostTable();
+    }
+
+    /* Kursberechnungs-Mathematik gemäß Vorgabe */
+    function executePriceCalculation() {
+      // 1. Unkorrelierte Schocks ermitteln
+      const shocks = {};
+      STOCKS_CONFIG.forEach(s => {
+        // Basis-Zufallswert (-vol bis +vol)
+        const shock = (Math.random() * 2 - 1) * s.baseVol;
+        shocks[s.id] = shock;
+      });
+
+      // 2. Korrelationen anwenden
+      const finalPctChanges = {};
+
+      // Unabhängige / Treiber
+      finalPctChanges['solar'] = shocks['solar'];
+      finalPctChanges['qai']   = shocks['qai'];
+      finalPctChanges['bio']   = shocks['bio'];
+      finalPctChanges['bank']  = shocks['bank'];
+
+      // NordOel: negativ korreliert zu SolarTech (-0.7)
+      finalPctChanges['nord']   = (shocks['nord'] * 0.5) + (shocks['solar'] * -0.7);
+
+      // CyberShield: positiv korreliert zu QuantumAI (+0.6)
+      finalPctChanges['cyber']  = (shocks['cyber'] * 0.5) + (shocks['qai'] * 0.6);
+
+      // AeroSpace: negativ korreliert zu BioPharma (-0.5)
+      finalPctChanges['aero']   = (shocks['aero'] * 0.5) + (shocks['bio'] * -0.5);
+
+      // CryptoWave: extrem volatil, negativ korreliert zu SafeHaven Bank (-0.6)
+      finalPctChanges['crypto'] = shocks['crypto'] + (shocks['bank'] * -0.6);
+
+      // 3. Neue Kurse berechnen, Schranke 2.00 € anwenden und runden
+      STOCKS_CONFIG.forEach(s => {
+        const stock = currentStocks[s.id];
+        stock.prevPrice = stock.price;
+
+        let newPrice = stock.price * (1 + finalPctChanges[s.id]);
+        if (newPrice < 2.00) newPrice = 2.00;
+        newPrice = Math.round(newPrice * 100) / 100;
+
+        stock.price = newPrice;
+        stock.changePct = ((stock.price - stock.prevPrice) / stock.prevPrice) * 100;
+      });
+    }
+
+    function handleIncomingTrade(data) {
+      if (!hostStudentStats[data.stockId]) return;
+      const stat = hostStudentStats[data.stockId];
+      if (data.change > 0) {
+        stat.boughtRound += data.change;
+        stat.totalHeld += data.change;
+      } else if (data.change < 0) {
+        stat.soldRound += Math.abs(data.change);
+        stat.totalHeld += data.change;
+      }
+      renderHostTable();
+    }
+
+    function renderHostTable() {
+      const tbody = document.getElementById('host-stocks-tbody');
+      tbody.innerHTML = STOCKS_CONFIG.map(s => {
+        const item = currentStocks[s.id];
+        const stat = hostStudentStats[s.id] || { boughtRound: 0, soldRound: 0, totalHeld: 0 };
+        const changeClass = item.changePct >= 0 ? 'pill-green' : 'pill-red';
+        const sign = item.changePct >= 0 ? '+' : '';
+
+        return `
+          <tr>
+            <td>
+              <strong>${item.name}</strong>
+              <span class="stock-badge-cat">${item.sector}</span>
+            </td>
+            <td>${currencyFmt.format(item.price)}</td>
+            <td><span class="pill ${changeClass}">${sign}${item.changePct.toFixed(2)} %</span></td>
+            <td style="color: var(--green); font-weight: 700;">+${stat.boughtRound}</td>
+            <td style="color: var(--red); font-weight: 700;">-${stat.soldRound}</td>
+            <td style="color: var(--accent); font-weight: 800;">${stat.totalHeld} Stk.</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function endHostGame() {
+      clearInterval(roundTimerInterval);
+      isGameRunning = false;
+
+      // Broadcast GAME_OVER
+      const msg = { type: 'GAME_OVER', prices: currentStocks };
+      Object.values(hostConnections).forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+
+      // Warte kurz, bis alle Scores eingetroffen sind, dann zeige Siegerehrung
+      setTimeout(() => {
+        renderLeaderboardView();
+      }, 1500);
+    }
+
+    function handleIncomingFinalScore(data) {
+      clientFinalScores.push({
+        name: data.studentName || 'Unbekannt',
+        wealth: data.totalWealth || 0
+      });
+      // Aktualisiere das Leaderboard live, falls bereits aufgerufen
+      if (!isGameRunning && currentRound >= TOTAL_ROUNDS) {
+        renderLeaderboardView();
+      }
+    }
+
+    function renderLeaderboardView() {
+      switchView('view-gameover');
+      clientFinalScores.sort((a, b) => b.wealth - a.wealth);
+
+      // Platz 1
+      if (clientFinalScores[0]) {
+        document.getElementById('podium-name-1').innerText = clientFinalScores[0].name;
+        document.getElementById('podium-wealth-1').innerText = currencyFmt.format(clientFinalScores[0].wealth);
+      }
+      // Platz 2
+      if (clientFinalScores[1]) {
+        document.getElementById('podium-name-2').innerText = clientFinalScores[1].name;
+        document.getElementById('podium-wealth-2').innerText = currencyFmt.format(clientFinalScores[1].wealth);
+      }
+      // Platz 3
+      if (clientFinalScores[2]) {
+        document.getElementById('podium-name-3').innerText = clientFinalScores[2].name;
+        document.getElementById('podium-wealth-3').innerText = currencyFmt.format(clientFinalScores[2].wealth);
+      }
+
+      // Restliche Ränge (ab Rang 4)
+      const rest = clientFinalScores.slice(3);
+      const listEl = document.getElementById('gameover-remaining-list');
+      if (rest.length === 0) {
+        listEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">Keine weiteren Teilnehmer</div>';
+      } else {
+        listEl.innerHTML = rest.map((item, idx) => `
+          <div class="leaderboard-row">
+            <span><strong>#${idx + 4}</strong> ${escapeHtml(item.name)}</span>
+            <span style="font-weight: 700; color: var(--accent);">${currencyFmt.format(item.wealth)}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    /* ==========================================================
+       CLIENT-LOGIK (SCHÜLER-IPAD)
+    ========================================================== */
+    let clientPeer = null;
+    let clientConn = null;
+    let studentName = '';
+    let cash = 10000.00;
+    let portfolio = {}; // stockId -> count
+    let isClientLocked = false;
+
+    STOCKS_CONFIG.forEach(s => {
+      portfolio[s.id] = 0;
+    });
+
+    function showClientModal() {
+      document.getElementById('join-modal-overlay').style.display = 'flex';
+      document.getElementById('input-room-code').focus();
+    }
+
+    function hideClientModal() {
+      document.getElementById('join-modal-overlay').style.display = 'none';
+    }
+
+    function initClientFromModal() {
+      let codeInput = document.getElementById('input-room-code').value.trim().toUpperCase();
+      const nameInput = document.getElementById('input-student-name').value.trim();
+
+      if (!codeInput || !nameInput) {
+        alert('Bitte gib den Raum-Code und deinen Namen ein.');
+        return;
+      }
+
+      if (!codeInput.startsWith('BORS-')) {
+        codeInput = 'BORS-' + codeInput;
+      }
+
+      studentName = nameInput;
+      hideClientModal();
+      switchView('view-client');
+      renderClientCards();
+      updateClientDepotOverview();
+
+      clientPeer = new Peer();
+
+      clientPeer.on('open', () => {
+        clientConn = clientPeer.connect(codeInput, { reliable: true });
+
+        clientConn.on('open', () => {
+          clientConn.send({ type: 'JOIN', studentName: studentName });
+        });
+
+        clientConn.on('data', (data) => {
+          handleServerMessage(data);
+        });
+
+        clientConn.on('close', () => {
+          alert('Verbindung zur Lehrkraft verloren.');
+        });
+      });
+
+      clientPeer.on('error', (err) => {
+        alert('Verbindungsfehler: Raum nicht gefunden oder PeerJS-Problem.');
+        console.error(err);
+        switchView('view-role');
+      });
+    }
+
+    function handleServerMessage(data) {
+      if (!data || !data.type) return;
+
+      if (data.type === 'SYNC' || data.type === 'ROUND_UPDATE') {
+        currentStocks = data.prices;
+        updateClientRoundHeader(data.round, data.totalRounds);
+        updateTimerDisplay('client-timer-display', data.timeRemaining);
+        renderClientCards();
+        updateClientDepotOverview();
+      } else if (data.type === 'TIMER_SYNC') {
+        updateTimerDisplay('client-timer-display', data.timeRemaining);
+      } else if (data.type === 'GAME_OVER') {
+        isClientLocked = true;
+        if (data.prices) currentStocks = data.prices;
+        renderClientCards();
+        updateClientDepotOverview();
+
+        const finalWealth = calculateTotalWealth();
+        if (clientConn && clientConn.open) {
+          clientConn.send({
+            type: 'FINAL_SCORE',
+            studentName: studentName,
+            totalWealth: finalWealth
+          });
+        }
+        alert('Das Spiel ist beendet! Das Gesamtergebnis wird an die Tafel übertragen.');
+      }
+    }
+
+    function updateClientRoundHeader(round, total) {
+      const lbl = document.getElementById('client-round-label');
+      if (round === 0) {
+        lbl.innerText = 'Warte auf Start...';
+      } else {
+        lbl.innerText = `Runde ${round} / ${total}`;
+      }
+    }
+
+    function calculateDepotValue() {
+      let val = 0;
+      STOCKS_CONFIG.forEach(s => {
+        val += portfolio[s.id] * currentStocks[s.id].price;
+      });
+      return val;
+    }
+
+    function calculateTotalWealth() {
+      return cash + calculateDepotValue();
+    }
+
+    function updateClientDepotOverview() {
+      const depotVal = calculateDepotValue();
+      const wealth = cash + depotVal;
+      const profitPct = ((wealth - 10000.00) / 10000.00) * 100;
+
+      document.getElementById('client-cash').innerText = currencyFmt.format(cash);
+      document.getElementById('client-stocks-val').innerText = currencyFmt.format(depotVal);
+      document.getElementById('client-wealth').innerText = currencyFmt.format(wealth);
+
+      const profitEl = document.getElementById('client-profit-pct');
+      const sign = profitPct >= 0 ? '+' : '';
+      profitEl.innerText = `${sign}${profitPct.toFixed(2)} %`;
+      profitEl.className = 'stat-val ' + (profitPct >= 0 ? 'color-green' : 'color-red');
+    }
+
+    function renderClientCards() {
+      const container = document.getElementById('client-grid-stocks');
+      container.innerHTML = STOCKS_CONFIG.map(s => {
+        const item = currentStocks[s.id];
+        const owned = portfolio[s.id] || 0;
+        const price = item.price;
+        const changeClass = item.changePct >= 0 ? 'color-green' : 'color-red';
+        const sign = item.changePct >= 0 ? '+' : '';
+
+        // Maximale Kaufkraft berechnen
+        const maxAffordable = Math.floor(cash / price);
+
+        return `
+          <div class="stock-card">
+            <div class="stock-top">
+              <div class="stock-name-box">
+                <div class="stock-title">${item.name}</div>
+                <div class="stock-sector">${item.sector}</div>
+              </div>
+              <div class="stock-price-box">
+                <div class="stock-price">${currencyFmt.format(price)}</div>
+                <div class="stock-change ${changeClass}">${sign}${item.changePct.toFixed(2)}%</div>
+              </div>
+            </div>
+
+            <div class="stock-owned-row">
+              <span style="color: var(--text-muted);">Eigener Bestand:</span>
+              <span style="font-weight: 800; font-size: 1rem;">${owned} Stk.</span>
+            </div>
+
+            <div class="stock-actions">
+              <!-- KAUFEN -->
+              <div class="btn-row">
+                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 1)" ${cash < price || isClientLocked ? 'disabled' : ''}>+1</button>
+                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 5)" ${cash < (price * 5) || isClientLocked ? 'disabled' : ''}>+5</button>
+                <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', ${maxAffordable})" ${maxAffordable < 1 || isClientLocked ? 'disabled' : ''}>Max (${maxAffordable})</button>
+              </div>
+              <!-- VERKAUFEN -->
+              <div class="btn-row">
+                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -1)" ${owned < 1 || isClientLocked ? 'disabled' : ''}>-1</button>
+                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -5)" ${owned < 5 || isClientLocked ? 'disabled' : ''}>-5</button>
+                <button class="btn-trade btn-sell" onclick="tradeStock('${s.id}', -${owned})" ${owned < 1 || isClientLocked ? 'disabled' : ''}>Alle (${owned})</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function tradeStock(stockId, amount) {
+      if (isClientLocked || amount === 0) return;
+      const stock = currentStocks[stockId];
+      const cost = stock.price * Math.abs(amount);
+
+      if (amount > 0) {
+        // Kauf
+        if (cash >= cost) {
+          cash -= cost;
+          portfolio[stockId] += amount;
+          sendTradeToHost(stockId, amount, portfolio[stockId]);
+        }
+      } else {
+        // Verkauf
+        const sellQty = Math.abs(amount);
+        if (portfolio[stockId] >= sellQty) {
+          cash += cost;
+          portfolio[stockId] -= sellQty;
+          sendTradeToHost(stockId, -sellQty, portfolio[stockId]);
+        }
+      }
+
+      // UI unmittelbar aktualisieren
+      renderClientCards();
+      updateClientDepotOverview();
+    }
+
+    function sendTradeToHost(stockId, change, totalHeld) {
+      if (clientConn && clientConn.open) {
+        clientConn.send({
+          type: 'TRADE',
+          studentName: studentName,
+          stockId: stockId,
+          change: change,
+          totalHeld: totalHeld
+        });
+      }
+    }
+
+    /* ==========================================================
+       HILFSFUNKTIONEN
+    ========================================================== */
+    function updateTimerDisplay(elementId, totalSec) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const m = Math.floor(Math.max(0, totalSec) / 60);
+      const s = Math.max(0, totalSec) % 60;
+      el.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
