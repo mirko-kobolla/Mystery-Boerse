@@ -10,6 +10,7 @@ Dieses Dokument hält die umgesetzten Spielentscheidungen und spätere Ideen fes
 - Die acht geheimen Kursregeln als geordnete Berechnung bei Rundenbeginn umgesetzt. Der zufällige Telekom-Geheimnisstatus wird auf der Host-Tafel durch 🔒 kenntlich gemacht; die Regeln selbst erscheinen nicht in der Spieloberfläche.
 - Die Host-Tabelle durch ein 4×2-Kartenraster mit individuellem SVG-Kursverlauf und Klassen-Handelszahlen ersetzt.
 - Host-Steuerungen zum Pausieren/Fortsetzen und vorzeitigen Beenden ergänzt; Clients können während der Pause nicht handeln.
+- Neustart-Schaltfläche nach Spielende und im Verbindungsfehler-Fall ergänzt, damit die Anwendung ohne manuelles Schließen des Tabs erneut gestartet werden kann.
 - Die PeerJS-Kommunikation zwischen Host und Clients beibehalten.
 - Im Repository existiert keine `index.html`; die bestehende Anwendung liegt in `boersen-spiel.html`, die deshalb angepasst wurde.
 

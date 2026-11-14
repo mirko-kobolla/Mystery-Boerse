@@ -11,6 +11,7 @@ Die Börsen-Arena ist eine Börsensimulation für eine Klasse. Die Lehrkraft er�
 - Während einer Runde können die Schüler Aktien kaufen und verkaufen. Der Client zeigt Bargeld, Depotwert, Gesamtvermögen sowie den Gewinn oder Verlust in Euro.
 - Eine Partie umfasst 24 Runden. Standardmäßig dauert eine Runde fünf Minuten; der Host kann vor Spielbeginn den kurzen Testmodus wählen.
 - Der Host kann die Partie anhalten und fortsetzen oder vorzeitig beenden. Während einer Pause stehen auch Käufe und Verkäufe still.
+- Nach Spielende und bei Verbindungsverlust können Clients über „Nochmal spielen“ zur Startansicht zurückkehren. Auch die Host-Siegerehrung bietet diesen Neustart an.
 - Die Verbindung zwischen Host und Clients läuft über PeerJS. Der Host verwaltet die gemeinsame Tafel und sendet Kurs- und Rundendaten an die verbundenen Clients.
 
 ## Aktien
