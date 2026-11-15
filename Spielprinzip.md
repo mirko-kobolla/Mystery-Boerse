@@ -10,6 +10,7 @@ Die Börsen-Arena ist eine Börsensimulation für eine Klasse. Die Lehrkraft er�
 - Es gibt acht Aktien. Ihr Startkurs beträgt jeweils **5.000 €**; kein Kurs kann unter **200 €** fallen.
 - Während einer Runde können die Schüler Aktien kaufen und verkaufen. Der Client zeigt Bargeld, Depotwert, Gesamtvermögen sowie den Gewinn oder Verlust in Euro.
 - Jeder Spieler kann einmal pro Partie eine beliebige Aktie verdecken. Die Deckung gilt sofort bis zum Ende der folgenden Runde. Währenddessen bleiben Kurs, Kursänderung und eigener Bestand dieser Aktie im Client verborgen; Käufe und Verkäufe sind weiterhin möglich. Depotwert, Gesamtvermögen und Gewinn/Verlust werden für alle Clients ausgeblendet, solange mindestens eine Aktie verdeckt ist.
+- Die Host-Ansicht zeigt während des Spiels eine Rangliste mit dem Gesamtvermögen jedes Spielers. Sie aktualisiert sich erst nach jeder Runde. Während mindestens eine Aktie verdeckt ist, bleiben in dieser Live-Rangliste die Vermögensbeträge verborgen; die Platzierungen bleiben sichtbar.
 - Eine Partie umfasst 24 Runden. Standardmäßig dauert eine Runde fünf Minuten; der Host kann vor Spielbeginn den kurzen Testmodus wählen.
 - Der Host kann die Partie anhalten und fortsetzen oder vorzeitig beenden. Während einer Pause stehen auch Käufe und Verkäufe still.
 - Nach Spielende und bei Verbindungsverlust können Clients über „Nochmal spielen“ zur Startansicht zurückkehren. Auch die Host-Siegerehrung bietet diesen Neustart an.
@@ -43,4 +44,4 @@ Die im Regeltext erwähnten Vergleichswerte „Bavaria Auto-Werke“ und „Ruhr
 
 ## Tafel und Spielende
 
-Die Host-Tafel zeigt alle acht Aktien in einem 4×2-Kartenraster mit Kurs, absoluter Änderung in Euro, Kursverlauf sowie Käufen, Verkäufen und Gesamtbesitz der Klasse. Verdeckt ein Spieler eine Aktie, wird sie auf der Host-Tafel markiert und ihr Kursverlauf während der Deckung nicht fortgeschrieben. Endet das Spiel, während mindestens eine Aktie verdeckt ist, zeigt die Rangliste nur die Platzierungen; die Vermögensbeträge bleiben verborgen. Die Rangfolge wird weiterhin anhand der tatsächlichen Endvermögen bestimmt. Nach Runde 24 werden die Endvermögen der Clients an den Host übermittelt und als Rangliste angezeigt.
+Die Host-Tafel zeigt alle acht Aktien in einem 4×2-Kartenraster mit Kurs, absoluter Änderung in Euro, Kursverlauf sowie Käufen, Verkäufen und Gesamtbesitz der Klasse. Verdeckt ein Spieler eine Aktie, wird sie auf der Host-Tafel markiert und ihr Kursverlauf während der Deckung nicht fortgeschrieben. Bei Spielende wird die Deckung aufgehoben: Die Siegerehrung zeigt immer die Platzierungen und vollständigen Endvermögen. Nach Runde 24 werden die Endvermögen der Clients an den Host übermittelt und als Rangliste angezeigt.

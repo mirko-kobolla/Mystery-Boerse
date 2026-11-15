@@ -377,6 +377,77 @@
       min-height: 0;
     }
 
+    .host-main-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 270px;
+      gap: 12px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .host-live-leaderboard {
+      min-height: 0;
+      padding: 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .host-live-leaderboard h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .host-live-ranking-note {
+      min-height: 1.2em;
+      margin-top: 4px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .host-live-ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .host-live-ranking-row {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      background: var(--card-inner);
+      font-size: 0.85rem;
+    }
+
+    .host-live-rank {
+      color: var(--text-muted);
+      font-weight: 800;
+    }
+
+    .host-live-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .host-live-wealth {
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
     .host-stock-card {
       min-width: 0;
       min-height: 0;
@@ -494,16 +565,28 @@
       }
     }
 
-    @media (max-width: 700px) {
-      .host-stock-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-template-rows: repeat(4, minmax(180px, 1fr));
-        overflow-y: auto;
-      }
-
+    @media (max-width: 1100px) {
       #view-host {
         height: auto;
         min-height: 100vh;
+      }
+
+      .host-main-layout {
+        display: flex;
+        flex-direction: column;
+        flex: initial;
+      }
+
+      .host-stock-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(4, minmax(180px, 1fr));
+        overflow: visible;
+        flex: initial;
+      }
+
+      .host-live-leaderboard {
+        max-height: 260px;
+        flex: 0 0 auto;
       }
 
       .client-exit-panel {
@@ -899,7 +982,16 @@
       </div>
     </div>
 
-    <main class="host-stock-grid" id="host-stock-grid"></main>
+    <div class="host-main-layout">
+      <main class="host-stock-grid" id="host-stock-grid"></main>
+      <aside class="host-live-leaderboard" aria-labelledby="host-live-ranking-title">
+        <h2 id="host-live-ranking-title">Rangliste · Live</h2>
+        <div class="host-live-ranking-note" id="host-live-ranking-note"></div>
+        <ol class="host-live-ranking-list" id="host-live-ranking-list" aria-live="polite">
+          <li class="host-live-ranking-row">Warte auf Schüler...</li>
+        </ol>
+      </aside>
+    </div>
   </div>
 
   <!-- ======================================================== -->
@@ -1100,6 +1192,7 @@
     let connectedStudents = {}; // id -> name
     let hostStudentStats = {}; // stockId -> { boughtRound, soldRound, totalHeld }
     let previousRoundHoldings = {};
+    let hostLiveScores = {}; // peerId -> { name, wealth }
     let clientFinalScores = []; // [{ studentName, totalWealth }]
 
     function initHostStats() {
@@ -1107,6 +1200,8 @@
         hostStudentStats[s.id] = { boughtRound: 0, soldRound: 0, totalHeld: 0 };
         previousRoundHoldings[s.id] = 0;
       });
+      hostLiveScores = {};
+      clientFinalScores = [];
       activeCovers = {};
       playerCoverUsed = {};
     }
@@ -1161,6 +1256,10 @@
 
         if (data.type === 'JOIN') {
           connectedStudents[conn.peer] = data.studentName;
+          hostLiveScores[conn.peer] = {
+            name: data.studentName,
+            wealth: STARTING_CAPITAL
+          };
           updateHostStudentUI();
           conn.send({
             type: 'PLAYER_STATE',
@@ -1169,16 +1268,19 @@
           });
         } else if (data.type === 'TRADE') {
           handleIncomingTrade(data);
+        } else if (data.type === 'SCORE_UPDATE') {
+          handleIncomingScoreUpdate(conn.peer, data);
         } else if (data.type === 'COVER_STOCK') {
           handleCoverRequest(conn.peer, data);
         } else if (data.type === 'FINAL_SCORE') {
-          handleIncomingFinalScore(data);
+          handleIncomingFinalScore(conn.peer, data);
         }
       });
 
       conn.on('close', () => {
         delete hostConnections[conn.peer];
         delete connectedStudents[conn.peer];
+        delete hostLiveScores[conn.peer];
         updateHostStudentUI();
       });
     }
@@ -1194,6 +1296,42 @@
       } else {
         listEl.innerHTML = studentNames.map(name => `<span class="student-tag">${escapeHtml(name)}</span>`).join('');
       }
+      renderHostLiveLeaderboard();
+    }
+
+    function renderHostLiveLeaderboard() {
+      const listEl = document.getElementById('host-live-ranking-list');
+      const noteEl = document.getElementById('host-live-ranking-note');
+      if (!listEl || !noteEl) return;
+
+      const hideWealth = getCoveredStockIds().length > 0;
+      const rankings = Object.values(hostLiveScores)
+        .sort((a, b) => b.wealth - a.wealth);
+      noteEl.innerText = hideWealth
+        ? 'Beträge während der Verdeckung verborgen · Update nach jeder Runde'
+        : 'Aktualisierung nach jeder Runde';
+
+      if (rankings.length === 0) {
+        listEl.innerHTML = '<li class="host-live-ranking-row">Warte auf Schüler...</li>';
+        return;
+      }
+
+      listEl.innerHTML = rankings.map((player, index) => `
+        <li class="host-live-ranking-row">
+          <span class="host-live-rank">#${index + 1}</span>
+          <span class="host-live-name">${escapeHtml(player.name)}</span>
+          <span class="host-live-wealth">${hideWealth ? 'Verdeckt' : currencyFmt.format(player.wealth)}</span>
+        </li>
+      `).join('');
+    }
+
+    function handleIncomingScoreUpdate(peerId, data) {
+      if (!connectedStudents[peerId] || !Number.isFinite(data.totalWealth)) return;
+      hostLiveScores[peerId] = {
+        name: connectedStudents[peerId],
+        wealth: data.totalWealth
+      };
+      renderHostLiveLeaderboard();
     }
 
     function toggleTestSpeed() {
@@ -1324,6 +1462,7 @@
         }
       });
       renderHostTable();
+      renderHostLiveLeaderboard();
     }
 
     function broadcastCoverUpdate() {
@@ -1338,6 +1477,7 @@
         }
       });
       renderHostTable();
+      renderHostLiveLeaderboard();
     }
 
     function handleCoverRequest(peerId, data) {
@@ -1516,14 +1656,17 @@
       isGameRunning = false;
       isGamePaused = false;
       isGameEnded = true;
+      activeCovers = {};
       document.getElementById('btn-host-pause').disabled = true;
       document.getElementById('btn-host-end').disabled = true;
+      renderHostTable();
+      renderHostLiveLeaderboard();
 
       // Broadcast GAME_OVER
       const msg = {
         type: 'GAME_OVER',
         prices: currentStocks,
-        coveredStocks: getCoveredStockIds()
+        coveredStocks: []
       };
       Object.values(hostConnections).forEach(conn => {
         if (conn.open) conn.send(msg);
@@ -1535,7 +1678,13 @@
       }, 1500);
     }
 
-    function handleIncomingFinalScore(data) {
+    function handleIncomingFinalScore(peerId, data) {
+      if (Number.isFinite(data.totalWealth) && connectedStudents[peerId]) {
+        hostLiveScores[peerId] = {
+          name: connectedStudents[peerId],
+          wealth: data.totalWealth
+        };
+      }
       clientFinalScores.push({
         name: data.studentName || 'Unbekannt',
         wealth: data.totalWealth || 0
@@ -1549,23 +1698,21 @@
     function renderLeaderboardView() {
       switchView('view-gameover');
       clientFinalScores.sort((a, b) => b.wealth - a.wealth);
-      const hideWealth = getCoveredStockIds().length > 0;
-      const formatWealth = wealth => hideWealth ? 'Verdeckt' : currencyFmt.format(wealth);
 
       // Platz 1
       if (clientFinalScores[0]) {
         document.getElementById('podium-name-1').innerText = clientFinalScores[0].name;
-        document.getElementById('podium-wealth-1').innerText = formatWealth(clientFinalScores[0].wealth);
+        document.getElementById('podium-wealth-1').innerText = currencyFmt.format(clientFinalScores[0].wealth);
       }
       // Platz 2
       if (clientFinalScores[1]) {
         document.getElementById('podium-name-2').innerText = clientFinalScores[1].name;
-        document.getElementById('podium-wealth-2').innerText = formatWealth(clientFinalScores[1].wealth);
+        document.getElementById('podium-wealth-2').innerText = currencyFmt.format(clientFinalScores[1].wealth);
       }
       // Platz 3
       if (clientFinalScores[2]) {
         document.getElementById('podium-name-3').innerText = clientFinalScores[2].name;
-        document.getElementById('podium-wealth-3').innerText = formatWealth(clientFinalScores[2].wealth);
+        document.getElementById('podium-wealth-3').innerText = currencyFmt.format(clientFinalScores[2].wealth);
       }
 
       // Restliche Ränge (ab Rang 4)
@@ -1577,7 +1724,7 @@
         listEl.innerHTML = rest.map((item, idx) => `
           <div class="leaderboard-row">
             <span><strong>#${idx + 4}</strong> ${escapeHtml(item.name)}</span>
-            <span style="font-weight: 700; color: var(--accent);">${formatWealth(item.wealth)}</span>
+            <span style="font-weight: 700; color: var(--accent);">${currencyFmt.format(item.wealth)}</span>
           </div>
         `).join('');
       }
@@ -1677,6 +1824,7 @@
         updateTimerDisplay('client-timer-display', data.timeRemaining);
         renderClientCards();
         updateClientDepotOverview();
+        if (data.type === 'ROUND_UPDATE') sendLiveScore();
       } else if (data.type === 'TIMER_SYNC') {
         updateTimerDisplay('client-timer-display', data.timeRemaining);
       } else if (data.type === 'GAME_PAUSE') {
@@ -1694,6 +1842,7 @@
         isClientLocked = true;
         isClientPaused = false;
         updateClientCoverState(data);
+        clientCoveredStocks = [];
         if (data.prices) currentStocks = data.prices;
         renderClientCards();
         updateClientDepotOverview();
@@ -1745,6 +1894,16 @@
 
     function calculateTotalWealth() {
       return cash + calculateDepotValue();
+    }
+
+    function sendLiveScore() {
+      if (clientConn && clientConn.open && !isClientLocked) {
+        clientConn.send({
+          type: 'SCORE_UPDATE',
+          studentName: studentName,
+          totalWealth: calculateTotalWealth()
+        });
+      }
     }
 
     function updateClientDepotOverview() {

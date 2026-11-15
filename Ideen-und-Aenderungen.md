@@ -18,7 +18,8 @@ Dieses Dokument hält die umgesetzten Spielentscheidungen und spätere Ideen fes
 
 - Die Kursregeln für Cyber Securit, Hochtief Bauwesen und Rhein-Main Bank AG auf die festgelegten prozentualen Änderungen umgestellt; prozentuale Kursänderungen werden auf volle Euro gerundet.
 - Die Alt-Entertaiment-Kurve bildet das W-Logo über sechs Abschnitte mit je vier Runden pro Abschnitt nach. Die bisherigen Bewegungen von −500 € und +700 € bleiben dabei erhalten.
-- Die Verdecken-Funktion ergänzt: Jeder Spieler kann einmal pro Partie eine Aktie für die laufende und die folgende Runde verdecken. Kurs und eigener Bestand der Aktie sowie die Vermögenssummen bleiben während aktiver Verdeckungen verborgen; der Handel bleibt möglich.
+- Die Verdecken-Funktion ergänzt: Jeder Spieler kann einmal pro Partie eine Aktie für die laufende und die folgende Runde verdecken. Kurs und eigener Bestand der Aktie sowie die Vermögenssummen der Clients bleiben während aktiver Verdeckungen verborgen; der Handel bleibt möglich.
+- Eine Live-Rangliste mit Gesamtvermögen in der Host-Ansicht ergänzt, die sich erst nach jeder Runde aktualisiert. Während einer Verdeckung sind dort nur die Platzierungen sichtbar; bei Spielende werden in der Siegerehrung immer alle Endvermögen offengelegt.
 
 ## Festgelegte Auslegung
 
