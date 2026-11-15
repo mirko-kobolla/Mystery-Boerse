@@ -424,6 +424,18 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .cover-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      font-size: 0.72rem;
+      font-weight: 800;
+      vertical-align: middle;
+    }
+
     .stock-chart {
       display: block;
       width: 100%;
@@ -637,6 +649,20 @@
       flex: 1;
       padding: 8px 4px;
       font-size: 0.95rem;
+    }
+
+    .btn-cover {
+      width: 100%;
+      padding: 6px 8px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.65);
+      font-size: 0.82rem;
+    }
+
+    .btn-cover:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
 
     .btn-buy {
@@ -988,6 +1014,8 @@
     let isGamePaused = false;
     let isGameEnded = false;
     let isRestarting = false;
+    let activeCovers = {}; // stockId -> round at which the cover expires
+    let playerCoverUsed = {}; // peerId -> whether this player used their cover
 
     // Formatierer
     const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
@@ -1001,22 +1029,53 @@
 
     function renderStockChart(stock) {
       const history = stock.history;
-      const minPrice = Math.min(...history);
-      const maxPrice = Math.max(...history);
+      const visiblePrices = history.filter(Number.isFinite);
+      const minPrice = Math.min(...visiblePrices);
+      const maxPrice = Math.max(...visiblePrices);
       const range = maxPrice - minPrice || 1;
       const points = history.map((price, index) => {
+        if (!Number.isFinite(price)) return null;
         const x = history.length === 1 ? 4 : 4 + (index / (history.length - 1)) * 292;
         const y = 70 - ((price - minPrice) / range) * 54;
         return { x, y };
       });
-      const pointList = points.map(point => `${point.x},${point.y}`).join(' ');
-      const dots = points.map(point =>
+      const segments = [];
+      let segment = [];
+      points.forEach(point => {
+        if (point) {
+          segment.push(point);
+        } else if (segment.length) {
+          segments.push(segment);
+          segment = [];
+        }
+      });
+      if (segment.length) segments.push(segment);
+      const lines = segments.map(line =>
+        `<polyline class="stock-chart-line" points="${line.map(point => `${point.x},${point.y}`).join(' ')}"></polyline>`
+      ).join('');
+      const dots = points.filter(Boolean).map(point =>
         `<circle class="stock-chart-dot" cx="${point.x}" cy="${point.y}" r="3"></circle>`
       ).join('');
 
       return `<svg class="stock-chart" viewBox="0 0 300 80" preserveAspectRatio="none" role="img" aria-label="Kursverlauf ${stock.name}">
-        <polyline class="stock-chart-line" points="${pointList}"></polyline>${dots}
+        ${lines}${dots}
       </svg>`;
+    }
+
+    function getCoveredStockIds() {
+      return STOCKS_CONFIG
+        .filter(stock => activeCovers[stock.id] && currentRound < activeCovers[stock.id])
+        .map(stock => stock.id);
+    }
+
+    function isStockCovered(stockId) {
+      return Boolean(activeCovers[stockId] && currentRound < activeCovers[stockId]);
+    }
+
+    function clearExpiredCovers() {
+      Object.keys(activeCovers).forEach(stockId => {
+        if (currentRound >= activeCovers[stockId]) delete activeCovers[stockId];
+      });
     }
 
     function switchView(viewId) {
@@ -1048,6 +1107,8 @@
         hostStudentStats[s.id] = { boughtRound: 0, soldRound: 0, totalHeld: 0 };
         previousRoundHoldings[s.id] = 0;
       });
+      activeCovers = {};
+      playerCoverUsed = {};
     }
 
     function initHost() {
@@ -1089,7 +1150,9 @@
           prices: currentStocks,
           timeRemaining: secondsRemaining,
           isRunning: isGameRunning,
-          isPaused: isGamePaused
+          isPaused: isGamePaused,
+          coveredStocks: getCoveredStockIds(),
+          coverUsed: Boolean(playerCoverUsed[conn.peer])
         });
       });
 
@@ -1099,8 +1162,15 @@
         if (data.type === 'JOIN') {
           connectedStudents[conn.peer] = data.studentName;
           updateHostStudentUI();
+          conn.send({
+            type: 'PLAYER_STATE',
+            coverUsed: Boolean(playerCoverUsed[conn.peer]),
+            coveredStocks: getCoveredStockIds()
+          });
         } else if (data.type === 'TRADE') {
           handleIncomingTrade(data);
+        } else if (data.type === 'COVER_STOCK') {
+          handleCoverRequest(conn.peer, data);
         } else if (data.type === 'FINAL_SCORE') {
           handleIncomingFinalScore(data);
         }
@@ -1150,6 +1220,8 @@
       isGameRunning = true;
       isGamePaused = false;
       isGameEnded = false;
+      activeCovers = {};
+      playerCoverUsed = {};
       currentRound = 1;
       document.getElementById('btn-host-pause').disabled = false;
       document.getElementById('btn-host-end').disabled = false;
@@ -1185,10 +1257,16 @@
         type: 'GAME_PAUSE',
         isPaused: isGamePaused,
         timeRemaining: secondsRemaining,
-        round: currentRound
+        round: currentRound,
+        coveredStocks: getCoveredStockIds()
       };
-      Object.values(hostConnections).forEach(conn => {
-        if (conn.open) conn.send(message);
+      Object.entries(hostConnections).forEach(([peerId, conn]) => {
+        if (conn.open) {
+          conn.send({
+            ...message,
+            coverUsed: Boolean(playerCoverUsed[peerId])
+          });
+        }
       });
     }
 
@@ -1200,6 +1278,7 @@
           return;
         }
         currentRound++;
+        clearExpiredCovers();
         secondsRemaining = roundDuration;
         executePriceCalculation();
         STOCKS_CONFIG.forEach(s => {
@@ -1227,18 +1306,84 @@
     }
 
     function broadcastRoundUpdate() {
-      const msg = {
+      const message = {
         type: 'ROUND_UPDATE',
         round: currentRound,
         totalRounds: TOTAL_ROUNDS,
         prices: currentStocks,
         timeRemaining: secondsRemaining,
-        isPaused: isGamePaused
+        isPaused: isGamePaused,
+        coveredStocks: getCoveredStockIds()
       };
-      Object.values(hostConnections).forEach(conn => {
-        if (conn.open) conn.send(msg);
+      Object.entries(hostConnections).forEach(([peerId, conn]) => {
+        if (conn.open) {
+          conn.send({
+            ...message,
+            coverUsed: Boolean(playerCoverUsed[peerId])
+          });
+        }
       });
       renderHostTable();
+    }
+
+    function broadcastCoverUpdate() {
+      const coveredStocks = getCoveredStockIds();
+      Object.entries(hostConnections).forEach(([peerId, conn]) => {
+        if (conn.open) {
+          conn.send({
+            type: 'COVER_UPDATE',
+            coveredStocks: coveredStocks,
+            coverUsed: Boolean(playerCoverUsed[peerId])
+          });
+        }
+      });
+      renderHostTable();
+    }
+
+    function handleCoverRequest(peerId, data) {
+      const conn = hostConnections[peerId];
+      const reject = message => {
+        if (conn && conn.open) {
+          conn.send({
+            type: 'COVER_RESULT',
+            accepted: false,
+            message: message,
+            coverUsed: Boolean(playerCoverUsed[peerId]),
+            coveredStocks: getCoveredStockIds()
+          });
+        }
+      };
+
+      if (!conn || !connectedStudents[peerId]) {
+        reject('Spieler nicht verbunden.');
+        return;
+      }
+      if (!isGameRunning || isGamePaused || isGameEnded) {
+        reject('Verdecken ist nur während einer laufenden Runde möglich.');
+        return;
+      }
+      if (!STOCKS_CONFIG.some(stock => stock.id === data.stockId)) {
+        reject('Diese Aktie kann nicht verdeckt werden.');
+        return;
+      }
+      if (playerCoverUsed[peerId]) {
+        reject('Du hast deine Aktie bereits verdeckt.');
+        return;
+      }
+
+      playerCoverUsed[peerId] = true;
+      activeCovers[data.stockId] = Math.max(
+        activeCovers[data.stockId] || 0,
+        currentRound + 2
+      );
+      currentStocks[data.stockId].history.push(null);
+      conn.send({
+        type: 'COVER_RESULT',
+        accepted: true,
+        coverUsed: true,
+        coveredStocks: getCoveredStockIds()
+      });
+      broadcastCoverUpdate();
     }
 
     function adjustStockPrice(stockId, amount) {
@@ -1248,6 +1393,11 @@
       stock.price = Math.max(MINIMUM_STOCK_PRICE, previousPrice + amount);
       stock.changeEuro = stock.price - previousPrice;
       return stock.changeEuro;
+    }
+
+    function adjustStockPricePercent(stockId, percentage) {
+      const priceChange = Math.round(currentStocks[stockId].price * percentage / 100);
+      return adjustStockPrice(stockId, priceChange);
     }
 
     function executePriceCalculation() {
@@ -1271,22 +1421,33 @@
         : changeInDefenseHoldings * -200);
       previousRoundHoldings = { ...totalHoldings };
 
-      adjustStockPrice('alt-entertainment', currentRound % 2 === 1 ? 700 : -500);
+      const entertainmentPhase = Math.floor((currentRound - 1) / 4);
+      adjustStockPrice('alt-entertainment', entertainmentPhase % 2 === 0 ? -500 : 700);
       adjustStockPrice('volkswagen',
         hostStudentStats.volkswagen.boughtRound > hostStudentStats.telekom.boughtRound ? 1200 : -600);
       const telekomHoldings = totalHoldings.telekom;
       adjustStockPrice('telekom', telekomHoldings >= 10 && telekomHoldings <= 30 ? 1300 : -800);
-      adjustStockPrice('cyber', currentStocks.telekom.secretActive ? 900 : -700);
+      if (currentStocks.telekom.secretActive) {
+        adjustStockPricePercent('cyber', 13);
+      } else {
+        adjustStockPrice('cyber', -700);
+      }
       adjustStockPrice('nordwind', totalBought > 15 ? 700 : -400);
-      adjustStockPrice('hochtief', currentStocks.verteidigungsstahl.changeEuro > 0 ? 600 : -600);
+      adjustStockPricePercent('hochtief', currentStocks.verteidigungsstahl.changeEuro > 0 ? 10 : -10);
 
       const otherChanges = STOCKS_CONFIG.slice(0, 7).map(s => currentStocks[s.id].changeEuro);
       const risingStocks = otherChanges.filter(change => change > 0).length;
       const fallingStocks = otherChanges.filter(change => change < 0).length;
-      adjustStockPrice('rhein-main-bank', risingStocks >= 4 ? 800 : fallingStocks >= 4 ? -500 : 0);
+      if (risingStocks >= 4) {
+        adjustStockPricePercent('rhein-main-bank', 20);
+      } else if (fallingStocks >= 4) {
+        adjustStockPricePercent('rhein-main-bank', -10);
+      } else {
+        adjustStockPrice('rhein-main-bank', 0);
+      }
 
       STOCKS_CONFIG.forEach(s => {
-        currentStocks[s.id].history.push(currentStocks[s.id].price);
+        currentStocks[s.id].history.push(isStockCovered(s.id) ? null : currentStocks[s.id].price);
       });
     }
 
@@ -1310,12 +1471,15 @@
         const stat = hostStudentStats[s.id] || { boughtRound: 0, soldRound: 0, totalHeld: 0 };
         const changeClass = item.changeEuro >= 0 ? 'color-green' : 'color-red';
         const secretIcon = item.secretActive ? '<span aria-label="Geheimnis aktiv"> 🔒</span>' : '';
+        const coverBadge = isStockCovered(s.id)
+          ? '<span class="cover-badge" aria-label="Aktie verdeckt">🔒 Verdeckt</span>'
+          : '';
 
         return `
           <article class="host-stock-card">
             <div class="host-stock-top">
               <div>
-                <div class="host-stock-name">${item.name}${secretIcon}</div>
+                <div class="host-stock-name">${item.name}${secretIcon}${coverBadge}</div>
                 <div class="host-stock-sector">${item.sector}</div>
               </div>
               <div>
@@ -1328,6 +1492,19 @@
           </article>
         `;
       }).join('');
+    }
+
+    function requestStockCover(stockId) {
+      if (clientCoverUsed || clientCoverRequestPending || isClientLocked ||
+          isClientPaused || clientRound < 1) return;
+      if (!clientConn || !clientConn.open) {
+        alert('Keine Verbindung zur Lehrkraft. Die Aktie konnte nicht verdeckt werden.');
+        return;
+      }
+
+      clientCoverRequestPending = true;
+      renderClientCards();
+      clientConn.send({ type: 'COVER_STOCK', stockId: stockId });
     }
 
     function endHostGame(confirmEarlyEnd) {
@@ -1343,7 +1520,11 @@
       document.getElementById('btn-host-end').disabled = true;
 
       // Broadcast GAME_OVER
-      const msg = { type: 'GAME_OVER', prices: currentStocks };
+      const msg = {
+        type: 'GAME_OVER',
+        prices: currentStocks,
+        coveredStocks: getCoveredStockIds()
+      };
       Object.values(hostConnections).forEach(conn => {
         if (conn.open) conn.send(msg);
       });
@@ -1368,21 +1549,23 @@
     function renderLeaderboardView() {
       switchView('view-gameover');
       clientFinalScores.sort((a, b) => b.wealth - a.wealth);
+      const hideWealth = getCoveredStockIds().length > 0;
+      const formatWealth = wealth => hideWealth ? 'Verdeckt' : currencyFmt.format(wealth);
 
       // Platz 1
       if (clientFinalScores[0]) {
         document.getElementById('podium-name-1').innerText = clientFinalScores[0].name;
-        document.getElementById('podium-wealth-1').innerText = currencyFmt.format(clientFinalScores[0].wealth);
+        document.getElementById('podium-wealth-1').innerText = formatWealth(clientFinalScores[0].wealth);
       }
       // Platz 2
       if (clientFinalScores[1]) {
         document.getElementById('podium-name-2').innerText = clientFinalScores[1].name;
-        document.getElementById('podium-wealth-2').innerText = currencyFmt.format(clientFinalScores[1].wealth);
+        document.getElementById('podium-wealth-2').innerText = formatWealth(clientFinalScores[1].wealth);
       }
       // Platz 3
       if (clientFinalScores[2]) {
         document.getElementById('podium-name-3').innerText = clientFinalScores[2].name;
-        document.getElementById('podium-wealth-3').innerText = currencyFmt.format(clientFinalScores[2].wealth);
+        document.getElementById('podium-wealth-3').innerText = formatWealth(clientFinalScores[2].wealth);
       }
 
       // Restliche Ränge (ab Rang 4)
@@ -1394,7 +1577,7 @@
         listEl.innerHTML = rest.map((item, idx) => `
           <div class="leaderboard-row">
             <span><strong>#${idx + 4}</strong> ${escapeHtml(item.name)}</span>
-            <span style="font-weight: 700; color: var(--accent);">${currencyFmt.format(item.wealth)}</span>
+            <span style="font-weight: 700; color: var(--accent);">${formatWealth(item.wealth)}</span>
           </div>
         `).join('');
       }
@@ -1411,6 +1594,9 @@
     let isClientLocked = false;
     let isClientPaused = false;
     let clientRound = 0;
+    let clientCoveredStocks = [];
+    let clientCoverUsed = false;
+    let clientCoverRequestPending = false;
 
     STOCKS_CONFIG.forEach(s => {
       portfolio[s.id] = 0;
@@ -1484,6 +1670,7 @@
 
       if (data.type === 'SYNC' || data.type === 'ROUND_UPDATE') {
         currentStocks = data.prices;
+        updateClientCoverState(data);
         isClientPaused = Boolean(data.isPaused);
         clientRound = data.round;
         updateClientRoundHeader(data.round, data.totalRounds);
@@ -1493,6 +1680,7 @@
       } else if (data.type === 'TIMER_SYNC') {
         updateTimerDisplay('client-timer-display', data.timeRemaining);
       } else if (data.type === 'GAME_PAUSE') {
+        updateClientCoverState(data);
         isClientPaused = data.isPaused;
         clientRound = data.round;
         updateTimerDisplay('client-timer-display', data.timeRemaining);
@@ -1505,6 +1693,7 @@
       } else if (data.type === 'GAME_OVER') {
         isClientLocked = true;
         isClientPaused = false;
+        updateClientCoverState(data);
         if (data.prices) currentStocks = data.prices;
         renderClientCards();
         updateClientDepotOverview();
@@ -1518,7 +1707,22 @@
           });
         }
         showClientExitPanel('Das Spiel ist beendet. Du kannst jetzt erneut spielen.');
+      } else if (data.type === 'PLAYER_STATE' || data.type === 'COVER_UPDATE') {
+        updateClientCoverState(data);
+        renderClientCards();
+        updateClientDepotOverview();
+      } else if (data.type === 'COVER_RESULT') {
+        clientCoverRequestPending = false;
+        updateClientCoverState(data);
+        if (!data.accepted) alert(data.message || 'Die Aktie konnte nicht verdeckt werden.');
+        renderClientCards();
+        updateClientDepotOverview();
       }
+    }
+
+    function updateClientCoverState(data) {
+      if (Array.isArray(data.coveredStocks)) clientCoveredStocks = data.coveredStocks;
+      if (typeof data.coverUsed === 'boolean') clientCoverUsed = data.coverUsed;
     }
 
     function updateClientRoundHeader(round, total) {
@@ -1547,14 +1751,15 @@
       const depotVal = calculateDepotValue();
       const wealth = cash + depotVal;
       const profit = wealth - STARTING_CAPITAL;
+      const hideWealth = clientCoveredStocks.length > 0;
 
       document.getElementById('client-cash').innerText = currencyFmt.format(cash);
-      document.getElementById('client-stocks-val').innerText = currencyFmt.format(depotVal);
-      document.getElementById('client-wealth').innerText = currencyFmt.format(wealth);
+      document.getElementById('client-stocks-val').innerText = hideWealth ? 'Verdeckt' : currencyFmt.format(depotVal);
+      document.getElementById('client-wealth').innerText = hideWealth ? 'Verdeckt' : currencyFmt.format(wealth);
 
       const profitEl = document.getElementById('client-profit-eur');
-      profitEl.innerText = formatSignedCurrency(profit);
-      profitEl.className = 'stat-val ' + (profit >= 0 ? 'color-green' : 'color-red');
+      profitEl.innerText = hideWealth ? 'Verdeckt' : formatSignedCurrency(profit);
+      profitEl.className = hideWealth ? 'stat-val' : 'stat-val ' + (profit >= 0 ? 'color-green' : 'color-red');
     }
 
     function renderClientCards() {
@@ -1565,6 +1770,9 @@
         const price = item.price;
         const changeClass = item.changeEuro >= 0 ? 'color-green' : 'color-red';
         const tradingDisabled = isClientLocked || isClientPaused;
+        const isCovered = clientCoveredStocks.includes(s.id);
+        const coverDisabled = clientCoverUsed || clientCoverRequestPending ||
+          isClientLocked || isClientPaused || clientRound < 1;
 
         // Maximale Kaufkraft berechnen
         const maxAffordable = Math.floor(cash / price);
@@ -1573,21 +1781,24 @@
           <div class="stock-card">
             <div class="stock-top">
               <div class="stock-name-box">
-                <div class="stock-title">${item.name}</div>
+                <div class="stock-title">${item.name}${isCovered ? '<span class="cover-badge">Verdeckt</span>' : ''}</div>
                 <div class="stock-sector">${item.sector}</div>
               </div>
               <div class="stock-price-box">
-                <div class="stock-price">${currencyFmt.format(price)}</div>
-                <div class="stock-change ${changeClass}">${formatSignedCurrency(item.changeEuro)}</div>
+                <div class="stock-price">${isCovered ? 'Verdeckt' : currencyFmt.format(price)}</div>
+                <div class="stock-change ${changeClass}">${isCovered ? '—' : formatSignedCurrency(item.changeEuro)}</div>
               </div>
             </div>
 
             <div class="stock-owned-row">
               <span style="color: var(--text-muted);">Eigener Bestand:</span>
-              <span style="font-weight: 800; font-size: 1rem;">${owned} Stk.</span>
+              <span style="font-weight: 800; font-size: 1rem;">${isCovered ? 'Verdeckt' : `${owned} Stk.`}</span>
             </div>
 
             <div class="stock-actions">
+              <button class="btn-cover" onclick="requestStockCover('${s.id}')" ${coverDisabled ? 'disabled' : ''}>
+                ${clientCoverUsed ? 'Verdecken verbraucht' : clientCoverRequestPending ? 'Wird verdeckt…' : 'Aktie verdecken'}
+              </button>
               <!-- KAUFEN -->
               <div class="btn-row">
                 <button class="btn-trade btn-buy" onclick="tradeStock('${s.id}', 1)" ${cash < price || tradingDisabled ? 'disabled' : ''}>+1</button>

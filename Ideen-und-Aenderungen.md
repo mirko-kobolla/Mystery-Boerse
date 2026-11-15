@@ -14,6 +14,12 @@ Dieses Dokument hält die umgesetzten Spielentscheidungen und spätere Ideen fes
 - Die PeerJS-Kommunikation zwischen Host und Clients beibehalten.
 - Im Repository existiert keine `index.html`; die bestehende Anwendung liegt in `boersen-spiel.html`, die deshalb angepasst wurde.
 
+## Umgesetzt am 15.11.2026
+
+- Die Kursregeln für Cyber Securit, Hochtief Bauwesen und Rhein-Main Bank AG auf die festgelegten prozentualen Änderungen umgestellt; prozentuale Kursänderungen werden auf volle Euro gerundet.
+- Die Alt-Entertaiment-Kurve bildet das W-Logo über sechs Abschnitte mit je vier Runden pro Abschnitt nach. Die bisherigen Bewegungen von −500 € und +700 € bleiben dabei erhalten.
+- Die Verdecken-Funktion ergänzt: Jeder Spieler kann einmal pro Partie eine Aktie für die laufende und die folgende Runde verdecken. Kurs und eigener Bestand der Aktie sowie die Vermögenssummen bleiben während aktiver Verdeckungen verborgen; der Handel bleibt möglich.
+
 ## Festgelegte Auslegung
 
 - Der Regeltext nennt „Bavaria Auto-Werke“ nicht in der Liste der acht Aktien. Für den Kaufvergleich in Regel 3 werden deshalb Volkswagen-Käufe mit Telekom-Käufen verglichen.
